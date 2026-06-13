@@ -1,6 +1,8 @@
 local vector = require("libraries/vector")
 
 function love.load()
+    shaders = require("shaders")
+
     wf = require("libraries/windfield")
     world = wf.newWorld(0, 0)
 
@@ -63,15 +65,16 @@ function love.update(dt)
 
     if love.keyboard.isDown("lshift") then extraSpeed = 200 end
 
-    dir = dir:normalized()
-    player.collider:setLinearVelocity(dir.x * (player.speed + extraSpeed), dir.y * (player.speed + extraSpeed))
-
     if dir:len() > 0 then
         player.anim:update(dt)
+        dir = dir:normalized()
     else
-         player.anim:gotoFrame(2)
+        if player.anim.position ~= 2 then
+            player.anim:gotoFrame(2)
+        end
     end
-
+    
+    player.collider:setLinearVelocity(dir.x * (player.speed + extraSpeed), dir.y * (player.speed + extraSpeed))
     world:update(dt)
     player.x, player.y = player.collider:getPosition()
 
@@ -87,13 +90,20 @@ function love.update(dt)
 
     if cam.x > (mapW - w/2) then cam.x = mapW - w/2 end
     if cam.y > (mapH - h/2) then cam.y = mapH - h/2 end
+
+    shaders.light:send("center", { cam:cameraCoords(player.x, player.y) })
 end
 
 function love.draw()
     cam:attach()
+        love.graphics.setShader(shaders.light)
+        shaders.light:send("radius", 100)
+
         gameMap:drawLayer(gameMap.layers["Ground"])
         gameMap:drawLayer(gameMap.layers["Trees"])
+
         player.anim:draw(player.spriteSheet, player.x, player.y, nil, 6, nil, 6, 9)
+        love.graphics.setShader()
         --world:draw()
     cam:detach()
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, 10, nil, 1.5, 1.5)
@@ -102,5 +112,7 @@ end
 function love.keypressed(key)
     if key == "space" then
         sounds.blip:play()
+    elseif key == "f" then
+        love.window.setFullscreen(not love.window.getFullscreen())
     end
 end
